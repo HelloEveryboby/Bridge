@@ -28,6 +28,7 @@ class PythonExtension {
     final Property<String> buildPython
     final Property<Integer> optimizeLevel
     final Property<String> pythonHome
+    final Property<String> ndkPath
     final ListProperty<String> srcDirs
     final ListProperty<String> abiFilters
     final PipConfig pip
@@ -43,6 +44,7 @@ class PythonExtension {
         buildPython = objects.property(String).convention("python3")
         optimizeLevel = objects.property(Integer).convention(1)
         pythonHome = objects.property(String).convention("")
+        ndkPath = objects.property(String).convention("")
         srcDirs = objects.listProperty(String).convention(["src/main/python"])
         abiFilters = objects.listProperty(String).convention(["arm64-v8a", "x86_64"])
         environment = objects.mapProperty(String, String).convention([:])
@@ -77,6 +79,11 @@ class PythonExtension {
     // DSL: pythonHome "/path/to/python/home"
     void pythonHome(String home) {
         pythonHome.set(home)
+    }
+
+    // DSL: ndkPath "/path/to/ndk"
+    void ndkPath(String path) {
+        ndkPath.set(path)
     }
 
     // DSL: pip { ... }

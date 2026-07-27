@@ -1,0 +1,12 @@
+// PyBridge 根项目 build.gradle
+// 用于 Maven 发布和统一版本管理
+
+allprojects {
+    group = 'com.pybridge'
+    version = '1.0.0'
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+}

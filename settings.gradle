@@ -1,0 +1,5 @@
+// PyBridge 根项目 — 用于 includeBuild 和 Maven 发布
+rootProject.name = "pybridge"
+
+include ':gradle-plugin'
+include ':runtime'

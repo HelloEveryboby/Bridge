@@ -1,2 +1,29 @@
-include ':app'
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 rootProject.name = "PyBridge Demo"
+include ':app'
+
+// 本地开发时引用 PyBridge 模块
+// 发布到 Maven 后可以删除这些行
+include ':runtime'
+project(':runtime').projectDir = new File(rootDir, '../runtime')
+
+includeBuild('..') {
+    dependencySubstitution {
+        substitute module('com.pybridge:gradle-plugin') using project(':gradle-plugin')
+    }
+}

@@ -36,15 +36,26 @@ android {
     }
 }
 
-python {
-    version "3.11"
-    buildPython "/usr/bin/python3"
-    optimizeLevel 1
+dependencies {
+    // 本地开发时使用 project(':runtime')
+    // 发布后改用: implementation 'com.pybridge:runtime:1.0.0'
+    implementation project(':runtime')
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}
 
+python {
+    version "3.12"
+    buildPython System.getenv("PYTHON3") ?: "python3"
+    optimizeLevel 1
     srcDirs = ["src/main/python"]
 
+    // 如果你的 NDK 不在标准路径，在这里指定
+    // ndkPath System.getenv("ANDROID_NDK") ?: "/path/to/ndk"
+
     pip {
-        install "numpy"
-        install "requests"
+        // 纯 Python 包可以直接用
+        // 带 C 扩展的包需要 NDK 交叉编译
+        // install "numpy==1.26.0"
+        // install "requests"
     }
 }

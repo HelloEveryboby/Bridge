@@ -261,6 +261,12 @@ DLC_Value* answer = dlc_bridge_call("javascript", "Math.sqrt", args, 1);
 
 ---
 
+## Android 集成
+
+PyBridge 可以像 Chaquopy 一样在 Android 中运行 Python。详见 [Android 快速上手](doc/ANDROID_SETUP.md)
+
+---
+
 ## License
 
 Apache License 2.0
