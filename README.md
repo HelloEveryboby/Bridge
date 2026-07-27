@@ -1,6 +1,6 @@
 # PyBridge — 多语言桥接框架
 
-让 Python / C / C++ / Rust / Go 与 Java/Kotlin 无缝互操作。
+让 Python / C / C++ / Java / JavaScript / C# / SQL / TypeScript / Rust 无缝互操作。
 
 ---
 
@@ -230,6 +230,34 @@ cd build-system
 | C 核心层 | 13 | ✅ 全部通过 |
 | JNI 层 | 6 | ✅ 全部通过 |
 | 多语言模块 | 2 | ✅ 全部通过 |
+| DLC 跨语言桥接 | 5 | ✅ 全部通过 |
+
+---
+
+## DLC 多语言连接器
+
+`dlc/` 目录提供统一的跨语言桥接协议，支持 9 种语言互操作：
+
+| 语言 | 连接器 | 实现方式 |
+|------|--------|---------|
+| Python | `pybridge_core.c` | dlopen libpython |
+| C | `pb_module.h` | 原生编译 |
+| C++ | `dlc/cpp/dlc_cpp.cpp` | g++ JIT 编译 |
+| Java | `pybridge_jni.c` | JNI 桥接 |
+| JavaScript | `dlc/javascript/dlc_js.c` | QuickJS/Node.js |
+| C# | `dlc/csharp/dlc_cs.c` | .NET 管道 |
+| SQL | `dlc/sql/dlc_sql.c` | SQLite 嵌入 |
+| TypeScript | `dlc/typescript/dlc_ts.c` | TS→JS 转译 |
+| Rust | `modules/rust/` | C ABI 导出 |
+
+```c
+// 跨语言调用示例
+DLC_Value* result = dlc_bridge_eval("sql",
+    "SELECT name, age FROM users WHERE age > 25");
+DLC_Value* answer = dlc_bridge_call("javascript", "Math.sqrt", args, 1);
+```
+
+详见 [dlc/README.md](dlc/README.md)
 
 ---
 
