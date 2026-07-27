@@ -1,0 +1,52 @@
+plugins {
+    id 'java-library'
+    id 'groovy'
+    id 'maven-publish'
+}
+
+group = 'com.pybridge'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+    google()
+}
+
+dependencies {
+    // Gradle API
+    compileOnly gradleApi()
+    compileOnly localGroovy()
+
+    // Android Gradle Plugin API
+    compileOnly 'com.android.tools.build:gradle:8.2.0'
+
+    // JSON processing
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // HTTP client (for pip index)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // Testing
+    testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
+    testImplementation gradleTestKit()
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            groupId = 'com.pybridge'
+            artifactId = 'gradle-plugin'
+            version = project.version
+        }
+    }
+}

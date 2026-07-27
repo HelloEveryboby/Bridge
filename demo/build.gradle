@@ -1,0 +1,25 @@
+// 项目级 build.gradle
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://pybridge.dev/maven" }
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.2.0"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22"
+        classpath "com.pybridge:gradle-plugin:1.0.0"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://pybridge.dev/maven" }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

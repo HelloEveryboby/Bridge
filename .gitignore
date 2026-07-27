@@ -1,0 +1,39 @@
+# Build outputs
+build/
+*.o
+*.so
+*.so.*
+*.pyc
+__pycache__/
+*.class
+*.dex
+*.apk
+*.aab
+
+# IDE
+.idea/
+*.iml
+.gradle/
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg-info/
+dist/
+.eggs/
+*.zip
+
+# JNI test binaries
+jni/test_pybridge
+jni/libtest_jni.so
+jni/libpybridge_jni.so
+modules/test_modules
+modules/*.so
+
+# Android
+demo/.gradle/
+demo/build/
+demo/local.properties
