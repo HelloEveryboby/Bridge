@@ -14,6 +14,7 @@ set(PYBRIDGE_SOURCES
     src/pybridge_core.c    # 核心桥接层 (dlopen libpython)
     src/pybridge_jni.c     # JNI 封装 (Java/Kotlin ↔ Python 类型转换)
     src/pb_loader.c        # 多语言模块动态加载器
+    src/pybridge_static_proxy.c  # Python → Java 动态代理 (PyClass)
 )
 
 # 头文件

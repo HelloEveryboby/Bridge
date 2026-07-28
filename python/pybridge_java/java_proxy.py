@@ -239,60 +239,236 @@ class JavaProxy:
         return array_class
 
 
-# JNI 底层调用接口（通过 ctypes 调用 libpybridge.so）
+# ═══════════════════════════════════════════════════════════════════
+# JNI 底层调用接口 — 通过 ctypes 调用 libpybridge.so
+# ═══════════════════════════════════════════════════════════════════
 
-def _init_java_object(py_obj, class_name, args):
-    """初始化 Java 对象"""
-    # 通过 JNI 创建 Java 对象
-    ref = _jni_create_object(class_name, args)
-    py_obj._jni_ref = ref
-    py_obj._class_name = class_name
+import ctypes
+import os
+
+_libpybridge = None
+
+def _load_libpybridge():
+    """加载 libpybridge.so 共享库"""
+    global _libpybridge
+    if _libpybridge is not None:
+        return _libpybridge
+
+    try:
+        import android  # noqa: F401
+        _libpybridge = ctypes.CDLL("libpybridge.so")
+        return _libpybridge
+    except (ImportError, OSError):
+        pass
+
+    for path in ["libpybridge.so", os.path.join(os.path.dirname(__file__), "libpybridge.so")]:
+        try:
+            _libpybridge = ctypes.CDLL(path)
+            return _libpybridge
+        except OSError:
+            continue
+    return None
+
+
+def _ensure_lib():
+    """确保库已加载"""
+    return _load_libpybridge()
+
+
+def _infer_java_type_sig(py_value):
+    """根据 Python 值推断 JNI 类型签名"""
+    if py_value is None:
+        return "Ljava/lang/Object;"
+    if isinstance(py_value, bool):
+        return "Z"
+    if isinstance(py_value, int):
+        return "J"
+    if isinstance(py_value, float):
+        return "D"
+    if isinstance(py_value, str):
+        return "Ljava/lang/String;"
+    if isinstance(py_value, bytes):
+        return "[B"
+    if isinstance(py_value, (list, tuple)):
+        return "[Ljava/lang/Object;"
+    if isinstance(py_value, dict):
+        return "Ljava/util/Map;"
+    if isinstance(py_value, JavaObject):
+        return "Ljava/lang/Object;"
+    return "Ljava/lang/Object;"
+
+
+def _configure_ctypes():
+    """配置 ctypes 函数参数和返回类型"""
+    lib = _ensure_lib()
+    if lib is None:
+        return
+
+    lib.pybridge_jni_create_object.argtypes = [
+        ctypes.c_char_p, ctypes.c_int,
+        ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.py_object),
+    ]
+    lib.pybridge_jni_create_object.restype = ctypes.c_int
+
+    lib.pybridge_jni_call_method.argtypes = [
+        ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p,
+        ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.py_object),
+    ]
+    lib.pybridge_jni_call_method.restype = ctypes.py_object
+
+    lib.pybridge_jni_get_field.argtypes = [
+        ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p
+    ]
+    lib.pybridge_jni_get_field.restype = ctypes.py_object
+
+    lib.pybridge_jni_set_field.argtypes = [
+        ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.py_object
+    ]
+    lib.pybridge_jni_set_field.restype = None
+
+    lib.pybridge_jni_decref.argtypes = [ctypes.c_int]
+    lib.pybridge_jni_decref.restype = None
+
+    lib.pybridge_jni_create_array.argtypes = [
+        ctypes.c_char_p, ctypes.c_int, ctypes.py_object
+    ]
+    lib.pybridge_jni_create_array.restype = ctypes.c_int
+
+    lib.pybridge_jni_get_array_element.argtypes = [
+        ctypes.c_int, ctypes.c_int, ctypes.c_char_p
+    ]
+    lib.pybridge_jni_get_array_element.restype = ctypes.py_object
+
+    lib.pybridge_jni_set_array_element.argtypes = [
+        ctypes.c_int, ctypes.c_int, ctypes.c_char_p, ctypes.py_object
+    ]
+    lib.pybridge_jni_set_array_element.restype = None
+
+    lib.pybridge_jni_get_array_length.argtypes = [ctypes.c_int]
+    lib.pybridge_jni_get_array_length.restype = ctypes.c_int
+
+    lib.pybridge_jni_find_class.argtypes = [ctypes.c_char_p]
+    lib.pybridge_jni_find_class.restype = ctypes.c_int
+
+    lib.pybridge_jni_call_static_method.argtypes = [
+        ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p,
+        ctypes.c_int, ctypes.POINTER(ctypes.c_char_p), ctypes.POINTER(ctypes.py_object),
+    ]
+    lib.pybridge_jni_call_static_method.restype = ctypes.py_object
+
+    lib.pybridge_jni_get_static_field.argtypes = [
+        ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p
+    ]
+    lib.pybridge_jni_get_static_field.restype = ctypes.py_object
+
+
+try:
+    _configure_ctypes()
+except Exception:
+    pass
 
 
 def _jni_create_object(class_name, args):
     """JNI 调用：创建 Java 对象"""
-    # 实际实现通过 C 扩展模块
-    return 0  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return 0
+
+    arg_count = len(args)
+    arg_types = (ctypes.c_char_p * arg_count)()
+    arg_values = (ctypes.py_object * arg_count)()
+
+    for i, arg in enumerate(args):
+        sig = _infer_java_type_sig(arg)
+        arg_types[i] = sig.encode('utf-8')
+        arg_values[i] = arg
+
+    return lib.pybridge_jni_create_object(
+        class_name.encode('utf-8'), arg_count, arg_types, arg_values
+    )
 
 
 def _call_java_method(obj_ref, method_name, args, kwargs):
     """JNI 调用：调用 Java 方法"""
-    return None  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return None
+
+    ret_type_sig = kwargs.pop('_ret', 'Ljava/lang/Object;') if kwargs else 'Ljava/lang/Object;'
+
+    arg_count = len(args)
+    arg_types = (ctypes.c_char_p * arg_count)()
+    arg_values = (ctypes.py_object * arg_count)()
+
+    for i, arg in enumerate(args):
+        sig = _infer_java_type_sig(arg)
+        arg_types[i] = sig.encode('utf-8')
+        arg_values[i] = arg
+
+    return lib.pybridge_jni_call_method(
+        obj_ref, method_name.encode('utf-8'), ret_type_sig.encode('utf-8'),
+        arg_count, arg_types, arg_values
+    )
 
 
 def _get_java_field(obj_ref, field_name):
     """JNI 调用：获取 Java 字段"""
-    return None  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return None
+    return lib.pybridge_jni_get_field(obj_ref, field_name.encode('utf-8'), b"Ljava/lang/Object;")
 
 
 def _set_java_field(obj_ref, field_name, value):
     """JNI 调用：设置 Java 字段"""
-    pass  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return
+    type_sig = _infer_java_type_sig(value)
+    lib.pybridge_jni_set_field(obj_ref, field_name.encode('utf-8'), type_sig.encode('utf-8'), value)
 
 
 def _decref_java_object(obj_ref):
     """JNI 调用：释放 Java 对象引用"""
-    pass  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return
+    lib.pybridge_jni_decref(obj_ref)
 
 
 def _create_java_array(type_sig, elements):
     """JNI 调用：创建 Java 数组"""
-    return 0  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return 0
+    if not isinstance(elements, list):
+        elements = list(elements) if elements else []
+    return lib.pybridge_jni_create_array(type_sig.encode('utf-8'), len(elements), elements)
 
 
 def _get_array_element(arr_ref, index):
     """JNI 调用：获取数组元素"""
-    return None  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return None
+    return lib.pybridge_jni_get_array_element(arr_ref, index, b"Ljava/lang/Object;")
 
 
 def _set_array_element(arr_ref, index, value):
     """JNI 调用：设置数组元素"""
-    pass  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return
+    type_sig = _infer_java_type_sig(value)
+    lib.pybridge_jni_set_array_element(arr_ref, index, type_sig.encode('utf-8'), value)
 
 
 def _get_array_length(arr_ref):
     """JNI 调用：获取数组长度"""
-    return 0  # placeholder
+    lib = _ensure_lib()
+    if lib is None:
+        return 0
+    return lib.pybridge_jni_get_array_length(arr_ref)
 
 
 # 类型转换辅助（从 type_mapping 导入）

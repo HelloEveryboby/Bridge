@@ -39,6 +39,8 @@ from .java_types import (
 )
 from .java_proxy import JavaProxy, JavaMethod, JavaField
 from .type_mapping import auto_convert, java_to_python, python_to_java
+from .static_proxy import PyClass, PyClassProxy
+from .pybridge_logcat import LogcatRedirect, install as install_logcat
 
 __all__ = [
     'java',
@@ -46,6 +48,8 @@ __all__ = [
     'jboolean', 'jbyte', 'jshort', 'jint', 'jlong',
     'jfloat', 'jdouble', 'jchar', 'jvoid',
     'JavaProxy',
+    'PyClass', 'PyClassProxy',
+    'LogcatRedirect', 'install_logcat',
 ]
 
 # 导入 hook：允许 import java.lang.String 形式的访问
