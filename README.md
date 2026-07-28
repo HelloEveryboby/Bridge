@@ -1,4 +1,4 @@
-# PyBridge — 多语言桥接框架
+# Bridge — 多语言桥接框架
 
 让 Python / C / C++ / Java / JavaScript / C# / SQL / TypeScript / Rust 无缝互操作。
 
