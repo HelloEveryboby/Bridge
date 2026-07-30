@@ -52,6 +52,10 @@ void br_register_pybridge_ready(int ready) {
     g_bridge_state.pybridge_ready = ready;
 }
 
+void br_register_dlc_ready(int ready) {
+    g_bridge_state.dlc_ready = ready;
+}
+
 /* ── 模块加载（薄包装 pb_loader） ─────────────────────────────── */
 /*
  * pb_load_module / pb_get_func / pb_unload_module / pb_unload_all

@@ -62,10 +62,13 @@ void br_unload_module(PB_Module* mod);
 /** 卸载所有模块 */
 void br_unload_all(void);
 
-/* ── PyBridge 子组件就绪回调（由 pybridge_python.c 设置） ────── */
+/* ── 子组件就绪回调（由各子模块实现设置） ──────────────────────── */
 
 /** 内部使用：PyBridge 初始化完成后注册自身 */
 void br_register_pybridge_ready(int ready);
+
+/** 内部使用：DLC 注册表初始化完成后注册自身 */
+void br_register_dlc_ready(int ready);
 
 #ifdef __cplusplus
 }
