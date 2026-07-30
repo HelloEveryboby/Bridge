@@ -22,7 +22,7 @@ Bridge (com.bridge.*)
 | **Core** | `BRIDGE_COMPONENT_CORE` | `jni/src/bridge_core.c` | `include/bridge/bridge_core.h` | `br_*` |
 | **PyBridge** | `BRIDGE_COMPONENT_PYBRIDGE` | `jni/src/pybridge_python.c` | `include/pybridge/pybridge_core.h` | `pb_*` |
 | **JNI** | `BRIDGE_COMPONENT_JNI` | `jni/src/pybridge_jni.c`, `pybridge_static_proxy.c` | — | `Java_com_bridge_py_*` |
-| **DLC** | `BRIDGE_COMPONENT_DLC` | `dlc/` | `dlc/dlc_protocol.h` | `dlc_*` |
+| **DLC** | `BRIDGE_COMPONENT_DLC` | `dlc/` | `dlc/dlc_protocol.h`、`dlc/dlc_bridge.h` | `dlc_*` |
 
 ---
 
@@ -92,9 +92,40 @@ jni/
     └── pb_loader.c                ← 模块动态加载器（pb_load_module 等）
 ```
 
+DLC 子模块（`dlc/`）独立目录：
+
+```
+dlc/
+├── dlc_protocol.h             ← 统一值类型 DLC_Value + 连接器接口 DLC_Connector
+├── dlc_value.c                ← 值构造/析构/JSON 序列化工具函数
+├── dlc_registry.h/.c          ← 连接器注册表 + 跨语言路由（dlc_bridge_call/eval/exec）
+├── dlc_bridge.h/.c            ← 数据桥接（文件间数据桥接：源→transform→目标）
+├── test_dlc.c / test_bridge.c ← 连接器测试 / 数据桥接测试
+└── {cpp,javascript,csharp,sql,typescript}/  ← 各语言 DLC 连接器
+```
+
 ---
 
-## 6. 扩展新的语言子模块
+## 6. DLC 数据桥接
+
+DLC 子模块提供两层能力：
+
+1. **跨语言函数调用**（`dlc_bridge_call/eval/exec`）：在已注册的语言连接器之间
+   同步路由调用，数据通过统一 `DLC_Value` 交换。
+2. **文件间数据桥接**（`DLC_Bridge`）：用一个语言编写一个桥接文件，连接两个或多个
+   文件之间的数据——从多个源文件读取 → transform 转换 → 写入多个目标文件。
+
+transform 支持两种模式：
+- **C 回调**（`dlc_bridge_set_transform_cb`）：永远可用，无需任何语言运行时。
+- **DLC 语言脚本**（`dlc_bridge_set_transform_lang`）：用 Python/JS/C#/SQL 等语言
+  编写转换逻辑，复用已注册的 DLC 连接器执行。
+
+详见 [MULTI_LANGUAGE.md](MULTI_LANGUAGE.md)「数据桥接」章节与
+[dlc/README.md](../dlc/README.md)。
+
+---
+
+## 7. 扩展新的语言子模块
 
 Bridge 的设计允许在 Core 之上挂载新的语言子模块（未来可新增 `bridge_javascript.c`、
 `bridge_ruby.c` 等）。约定：

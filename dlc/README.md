@@ -144,7 +144,8 @@ sudo apt install gcc g++ libsqlite3-dev
 make all
 
 # 运行测试
-make test
+make test           # 跨语言连接器测试
+make run-bridge     # 数据桥接测试
 
 # 构建特定连接器
 make js      # JavaScript
@@ -153,6 +154,49 @@ make cpp     # C++
 make cs      # C#
 make ts      # TypeScript
 ```
+
+## 数据桥接（文件间数据桥接）
+
+**用一个语言编写一个桥接文件，连接两个或多个文件之间的数据。**
+
+数据桥接器（`DLC_Bridge`）从多个**源文件**读取数据 → 用一种语言编写的
+**transform** 逻辑转换 → 写入多个**目标文件**。
+
+```
+源文件 A ─┐
+          ├─→ transform（C 回调 / DLC 语言脚本）─→ 目标文件 1
+源文件 B ─┘                                     └→ 目标文件 2
+```
+
+### API（`dlc_bridge.h`）
+
+```c
+DLC_Bridge* b = dlc_bridge_create("my-bridge");
+dlc_bridge_add_source(b, "input1.txt", NULL);
+dlc_bridge_add_source(b, "input2.txt", NULL);
+dlc_bridge_add_sink(b, "output.txt", NULL);
+
+/* 方式 1：C 回调 transform（永远可用，无需任何语言运行时） */
+dlc_bridge_set_transform_cb(b, my_transform_fn);
+
+/* 方式 2：用指定 DLC 语言脚本 transform（需该语言连接器已注册） */
+dlc_bridge_set_transform_lang(b, "javascript",
+    "bridge_output = bridge_input.map(s => s.toUpperCase())");
+
+int n = dlc_bridge_run(b);   /* 返回处理的源文件数，<0 出错 */
+const char* err = dlc_bridge_error(b);  /* NULL 表示无错误 */
+dlc_bridge_destroy(b);
+```
+
+transform 回调签名：`DLC_Value* (*DLC_TransformFn)(DLC_Value* input)`
+- 输入：`DLC_ARRAY`，每个元素为一个源文件的 `DLC_STRING` 内容
+- 输出：任意 `DLC_Value`（`STRING` 直接写入目标；其他类型先序列化为 JSON）
+
+### 示例
+
+完整示例见 [../modules/bridge/bridge_demo.c](../modules/bridge/bridge_demo.c)：
+用 C 编写桥接逻辑，从 2 个源文件读取 → 去重排序 → 写入文本目标，
+同时转 JSON → 写入 JSON 目标（2 源 → 2 目标）。
 
 ## 值类型系统
 
@@ -202,12 +246,15 @@ DLC_Connector* dlc_get_connector(void) {
 
 ```
 dlc/
-├── dlc_protocol.h          # 统一协议定义
+├── dlc_protocol.h          # 统一协议定义（DLC_Value / DLC_Connector）
 ├── dlc_value.c             # 值构造/析构/JSON序列化
 ├── dlc_registry.h          # 注册表 API
-├── dlc_registry.c          # 注册表实现 + 跨语言路由
+├── dlc_registry.c          # 注册表实现 + 跨语言路由（dlc_bridge_*）
+├── dlc_bridge.h            # 数据桥接 API（DLC_Bridge / 文件间数据桥接）
+├── dlc_bridge.c            # 数据桥接实现（源读取→transform→目标写入）
 ├── Makefile                # 构建系统
-├── test_dlc.c              # 测试套件
+├── test_dlc.c              # 连接器测试套件
+├── test_bridge.c           # 数据桥接测试套件
 ├── cpp/                    # C++ 连接器
 │   └── dlc_cpp.cpp
 ├── javascript/             # JavaScript 连接器
