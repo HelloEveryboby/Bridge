@@ -1,19 +1,19 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'com.pybridge.python'
+    id 'com.bridge.python'
 }
 
 android {
-    namespace 'com.pybridge.demo'
-    compileSdk 34
+    namespace 'com.bridge.py.demo'
+    compileSdk 35
 
     defaultConfig {
-        applicationId "com.pybridge.demo"
+        applicationId "com.bridge.py.demo"
         minSdk 24
-        targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        targetSdk 35
+        versionCode 2
+        versionName "2.0"
 
         ndk {
             abiFilters 'arm64-v8a', 'x86_64'
@@ -27,24 +27,24 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '11'
+        jvmTarget = '17'
     }
 }
 
 dependencies {
     // 本地开发时使用 project(':runtime')
-    // 发布后改用: implementation 'com.pybridge:runtime:1.0.0'
+    // 发布后改用: implementation 'com.bridge:pybridge-runtime:2.0.0'
     implementation project(':runtime')
-    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
 }
 
 python {
-    version "3.12"
+    version "3.13"
     buildPython System.getenv("PYTHON3") ?: "python3"
     optimizeLevel 1
     srcDirs = ["src/main/python"]

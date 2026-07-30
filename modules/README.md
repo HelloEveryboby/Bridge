@@ -1,6 +1,6 @@
-# PyBridge 多语言模块示例
+# Bridge 多语言模块示例
 
-通过统一模块协议（PB_MODULE），用 C/Rust/Go 编写可被 PyBridge 加载的扩展模块。
+通过统一模块协议（PB_MODULE），用 C/Rust/Go 编写可被 Bridge 框架加载的扩展模块。
 
 ## 模块协议
 

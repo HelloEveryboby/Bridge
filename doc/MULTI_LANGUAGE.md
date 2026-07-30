@@ -1,4 +1,7 @@
-# PyBridge Multi-Language — 多语言桥接架构
+# Bridge Multi-Language — 多语言桥接架构
+
+> Bridge 是统一的多语言互操作框架；PyBridge 为其 Python 子模块。
+> 框架子模块层级见 [BRIDGE.md](BRIDGE.md)。
 
 ## 核心思想
 
@@ -11,7 +14,9 @@ Java/Kotlin
     │
     ▼ JNI
 ┌─────────────────────────────────────────────┐
-│          PyBridge Core (C)                   │
+│          Bridge Core (C)                     │
+│          ├── bridge_core.c   (通用层 br_*)   │
+│          └── pybridge_python.c (Python pb_*) │
 │                                              │
 │  ┌─────────┐  ┌─────────┐  ┌─────────┐    │
 │  │Python   │  │ Rust    │  │  Go     │    │
@@ -23,8 +28,8 @@ Java/Kotlin
 │                                              │
 │  ┌─────────────────────────────────────┐    │
 │  │  统一模块系统 (pb_module_*)          │    │
-│  │  - 加载: pb_module_load("rustmath") │    │
-│  │  - 调用: pb_module_call("add",args) │    │
+│  │  - 加载: pb_load_module("rustmath") │    │
+│  │  - 调用: pb_get_func("add")         │    │
 │  │  - 类型: 统一类型转换层              │    │
 │  └─────────────────────────────────────┘    │
 └─────────────────────────────────────────────┘

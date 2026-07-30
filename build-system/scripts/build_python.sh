@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PyBridge CPython 交叉编译脚本
+# Bridge / PyBridge CPython 交叉编译脚本
 #
 # 将 CPython 编译为 Android 可用的共享库
 #
 # 用法:
-#   ./build_python.sh --abi arm64-v8a --version 3.11
-#   ./build_python.sh --abi x86_64 --version 3.11 --clean
+#   ./build_python.sh --abi arm64-v8a --version 3.13
+#   ./build_python.sh --abi x86_64 --version 3.13 --clean
 #
 # 依赖:
 #   - Android NDK r25+
@@ -16,7 +16,7 @@
 set -euo pipefail
 
 # 默认配置
-PYTHON_VERSION="${PYTHON_VERSION:-3.11.7}"
+PYTHON_VERSION="${PYTHON_VERSION:-3.13.1}"
 ANDROID_ABI="${ANDROID_ABI:-arm64-v8a}"
 ANDROID_API="${ANDROID_API:-24}"
 ANDROID_NDK="${ANDROID_NDK:-$ANDROID_NDK_HOME}"
@@ -50,7 +50,7 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --abi ABI          Target ABI (arm64-v8a, armeabi-v7a, x86_64, x86)"
-    echo "  --version VER      Python version (e.g., 3.11.7)"
+    echo "  --version VER      Python version (e.g., 3.13.1)"
     echo "  --ndk PATH         Android NDK path"
     echo "  --api LEVEL        Android API level (default: 24)"
     echo "  --jobs N           Parallel build jobs"
@@ -85,7 +85,7 @@ ARCH="${ABI_ARCHS[$ANDROID_ABI]}"
 PYTHON_MAJOR_MINOR="${PYTHON_VERSION%.*}"
 
 echo "============================================"
-echo "PyBridge CPython Cross-Compilation"
+echo "Bridge / PyBridge CPython Cross-Compilation"
 echo "============================================"
 echo "Python:  ${PYTHON_VERSION}"
 echo "ABI:     ${ANDROID_ABI}"

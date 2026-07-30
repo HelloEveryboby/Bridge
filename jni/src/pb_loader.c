@@ -13,7 +13,7 @@
 
 /* ── 模块句柄 ────────────────────────────────────────────────────── */
 
-typedef struct PB_Module {
+struct PB_Module {
     char*            name;           /* 模块名 */
     char*            path;           /* .so 路径 */
     void*            handle;         /* dlopen 句柄 */
@@ -21,7 +21,7 @@ typedef struct PB_Module {
     pb_module_func_fn func_fn;       /* pb_module_func */
     char*            info_json;      /* 缓存的元数据 JSON */
     struct PB_Module* next;          /* 链表 */
-} PB_Module;
+};
 
 static PB_Module* g_modules = NULL;
 

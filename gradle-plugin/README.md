@@ -1,6 +1,6 @@
-# PyBridge Gradle Plugin
+# Bridge Gradle Plugin
 
-在 Android 构建流程中注入 Python 编译和打包步骤。
+在 Android 构建流程中注入 Python 编译和打包步骤。插件 ID：`com.bridge.python`。
 
 ## 使用方式
 
@@ -8,11 +8,11 @@
 // build.gradle (app)
 plugins {
     id 'com.android.application'
-    id 'com.pybridge.python'
+    id 'com.bridge.python'
 }
 
 python {
-    version "3.12"
+    version "3.13"
     buildPython "/usr/bin/python3"
     optimizeLevel 1
     abiFilters "arm64-v8a", "x86_64"

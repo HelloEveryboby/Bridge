@@ -25,7 +25,7 @@
               ▼                                        ▼
     ┌─────────────────┐                      ┌─────────────────┐
     │  Python DLC     │                      │  JavaScript DLC │
-    │  (pybridge_core)│                      │  (QuickJS/Node) │
+    │  (pybridge_python)│                    │  (QuickJS/Node) │
     │  dlopen→libpython│                     │  嵌入式JS引擎    │
     └────────┬────────┘                      └────────┬────────┘
              │                                        │
@@ -69,7 +69,7 @@ typedef struct DLC_Connector {
 
 | 语言 | 连接器 | 实现方式 | 状态 |
 |------|--------|---------|------|
-| **Python** | `pybridge_core.c` | dlopen libpython | ✅ 13/13 测试通过 |
+| **Python** | `pybridge_python.c` | dlopen libpython | ✅ 13/13 测试通过 |
 | **C** | `pb_module.h` | 原生编译 | ✅ 已集成 |
 | **C++** | `cpp/dlc_cpp.cpp` | g++ JIT 编译为 .so | ✅ 代码就绪 |
 | **Java** | `pybridge_jni.c` | JNI 桥接 | ✅ 6/6 测试通过 |

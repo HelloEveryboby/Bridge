@@ -1,30 +1,33 @@
 cmake_minimum_required(VERSION 3.18)
-project(pybridge LANGUAGES C)
+project(bridge LANGUAGES C)
 
 # Android NDK 配置
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Python 配置
-set(PYTHON_VERSION "3.12" CACHE STRING "Python version")
+# Python 配置（Bridge 2.0 默认 Python 3.13，回退 3.12/3.11 由 pb_init 运行时处理）
+set(PYTHON_VERSION "3.13" CACHE STRING "Python version")
 set(PYTHON_HOME "" CACHE PATH "Python installation root (cross-compiled for Android)")
 
-# ── 实际存在的源文件 ────────────────────────────────────────────────
-set(PYBRIDGE_SOURCES
-    src/pybridge_core.c    # 核心桥接层 (dlopen libpython)
-    src/pybridge_jni.c     # JNI 封装 (Java/Kotlin ↔ Python 类型转换)
-    src/pb_loader.c        # 多语言模块动态加载器
+# ── Bridge 框架源文件 ──────────────────────────────────────────────
+# 通用层 (Bridge Core) + Python 子模块 (PyBridge) + JNI 封装 + 模块加载器
+set(BRIDGE_SOURCES
+    src/bridge_core.c          # Bridge 框架通用核心（版本/组件状态/模块加载包装）
+    src/pybridge_python.c      # PyBridge Python 子模块（dlopen libpython + pb_* API）
+    src/pybridge_jni.c         # JNI 封装 (Java/Kotlin ↔ Python 类型转换)
+    src/pb_loader.c            # 多语言模块动态加载器
     src/pybridge_static_proxy.c  # Python → Java 动态代理 (PyClass)
 )
 
 # 头文件
-set(PYBRIDGE_HEADERS
+set(BRIDGE_HEADERS
+    include/bridge/bridge_core.h
     include/pybridge/pybridge_core.h
     include/pybridge/pb_module.h
 )
 
-# 创建共享库
-add_library(pybridge SHARED ${PYBRIDGE_SOURCES})
+# 创建共享库（保留 libpybridge.so 名称以维持 AGP/打包兼容）
+add_library(pybridge SHARED ${BRIDGE_SOURCES})
 
 # ── 头文件搜索路径 ──────────────────────────────────────────────────
 target_include_directories(pybridge PRIVATE
@@ -62,7 +65,7 @@ endif()
 
 # ── 编译选项 ────────────────────────────────────────────────────────
 target_compile_definitions(pybridge PRIVATE
-    PYBRIDGE_VERSION="1.0.0"
+    BRIDGE_VERSION="2.0.0"
     PYBRIDGE_PYTHON_VERSION="${PYTHON_VERSION}"
 )
 
@@ -72,7 +75,7 @@ target_compile_options(pybridge PRIVATE
     -fvisibility=hidden
 )
 
-# 允许 JNI 函数导出
+# 允许 JNI 函数与 pb_* / br_* 符号导出
 set_target_properties(pybridge PROPERTIES
     C_VISIBILITY_PRESET default
     VISIBILITY_INLINES_HIDDEN OFF

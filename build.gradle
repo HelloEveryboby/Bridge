@@ -1,9 +1,10 @@
-// PyBridge 根项目 build.gradle
+// Bridge 根项目 build.gradle
 // 用于 Maven 发布和统一版本管理
+// PyBridge 是 Bridge 框架的 Python 桥接子模块
 
 allprojects {
-    group = 'com.pybridge'
-    version = '1.0.0'
+    group = 'com.bridge'
+    version = '2.0.0'
 
     repositories {
         google()
