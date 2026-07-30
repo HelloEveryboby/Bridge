@@ -155,41 +155,87 @@ make cs      # C#
 make ts      # TypeScript
 ```
 
-## 数据桥接（文件间数据桥接）
+## 数据桥接（端点间数据桥接）
 
-**用一个语言编写一个桥接文件，连接两个或多个文件之间的数据。**
+**用一个语言编写桥接逻辑，连接两个或多个端点之间的数据桥接。**
+端点不限于文件，支持内存、字符串、标准流等多种类型。
 
-数据桥接器（`DLC_Bridge`）从多个**源文件**读取数据 → 用一种语言编写的
-**transform** 逻辑转换 → 写入多个**目标文件**。
+数据桥接器（`DLC_Bridge`）从多个**源端点**读取数据 → 用一种语言编写的
+**transform** 逻辑转换 → 写入多个**目标端点**。
 
 ```
-源文件 A ─┐
-          ├─→ transform（C 回调 / DLC 语言脚本）─→ 目标文件 1
-源文件 B ─┘                                     └→ 目标文件 2
+源端点 A ─┐
+          ├─→ transform ─→ 目标端点 1
+源端点 B ─┤               └→ 目标端点 2
+源端点 C ─┘               └→ 目标端点 3
 ```
+
+### 端点类型（不限于文件）
+
+| 类型 | 源端点 | 目标端点 | API |
+|------|--------|---------|-----|
+| **FILE** 文件 | `add_source_file` | `add_sink_file` | 磁盘文件读写 |
+| **MEM** 内存 | `add_source_mem` | `add_sink_mem` + `get_sink_mem` | 内存 buffer，进程内数据流 |
+| **STRING** 字符串 | `add_source_str` | `add_sink_str` + `get_sink_str` | 直接字符串 |
+| **STDIO** 标准流 | `add_source_stdio(stdin)` | `add_sink_stdio(stdout/stderr)` | stdin/stdout/stderr |
+
+向后兼容：`add_source` / `add_sink` 仍可用（等价于 FILE 端点）。端点可任意混合
+（如文件源 → 内存目标、内存源 → 文件目标）。
+
+### transform 模式（4 种）
+
+| 模式 | API | 说明 |
+|------|-----|------|
+| **CALLBACK** | `set_transform_cb(b, fn)` | 内置 C 回调，永远可用，无需语言运行时 |
+| **LANG** | `set_transform_lang(b, lang, code)` | 用指定 DLC 语言脚本（需连接器已注册） |
+| **PIPELINE** | `add_stage(b, fn)` ×N | 多 stage 链式编排：stage1 → stage2 → ... → stageN |
+| **JSON_RULE** | `set_transform_rule(b, rule_json)` | 声明式 JSON 规则（map/filter/field/rename） |
+
+PIPELINE 模式示例：
+```c
+dlc_bridge_add_stage(b, stage_join);    /* 拼接源 → 单字符串 */
+dlc_bridge_add_stage(b, stage_upper);   /* 转大写 */
+dlc_bridge_add_stage(b, stage_suffix);  /* 加后缀 */
+```
+
+### 运行时能力
+
+- **重试**：`dlc_bridge_set_retry(b, N)` — transform 失败时自动重试 N 次
+- **异步**：`dlc_bridge_run_async(b, cb, ud)` + `dlc_bridge_wait(b)` — 后台线程执行
+
+### 独立化（脱离 Bridge 框架）
+
+数据桥接模块只依赖 `dlc_value.c` + `dlc_registry.c`，可独立编译为共享库：
+
+```bash
+make bridge-so    # 生成 build/libdlc_bridge.so
+```
+
+该库不依赖 jni/pybridge，可在任意 C 项目中独立使用。
 
 ### API（`dlc_bridge.h`）
 
 ```c
 DLC_Bridge* b = dlc_bridge_create("my-bridge");
-dlc_bridge_add_source(b, "input1.txt", NULL);
-dlc_bridge_add_source(b, "input2.txt", NULL);
-dlc_bridge_add_sink(b, "output.txt", NULL);
+dlc_bridge_add_source_str(b, "inline data", NULL);   /* 内存源 */
+dlc_bridge_add_source_file(b, "input.txt", NULL);     /* 文件源 */
+dlc_bridge_add_sink_mem(b, NULL);                     /* 内存目标 */
+dlc_bridge_add_sink_file(b, "output.txt", NULL);      /* 文件目标 */
 
-/* 方式 1：C 回调 transform（永远可用，无需任何语言运行时） */
-dlc_bridge_set_transform_cb(b, my_transform_fn);
+dlc_bridge_set_transform_cb(b, my_transform_fn);      /* C 回调 */
+dlc_bridge_add_stage(b, stage1);                      /* 或 pipeline */
+dlc_bridge_add_stage(b, stage2);
+dlc_bridge_set_retry(b, 3);                           /* 失败重试 3 次 */
 
-/* 方式 2：用指定 DLC 语言脚本 transform（需该语言连接器已注册） */
-dlc_bridge_set_transform_lang(b, "javascript",
-    "bridge_output = bridge_input.map(s => s.toUpperCase())");
+int n = dlc_bridge_run(b);                            /* 同步 */
+/* 或异步：dlc_bridge_run_async(b, cb, ud); dlc_bridge_wait(b); */
 
-int n = dlc_bridge_run(b);   /* 返回处理的源文件数，<0 出错 */
-const char* err = dlc_bridge_error(b);  /* NULL 表示无错误 */
+const char* data = dlc_bridge_get_sink_mem(b, 0, &len); /* 取内存目标数据 */
 dlc_bridge_destroy(b);
 ```
 
 transform 回调签名：`DLC_Value* (*DLC_TransformFn)(DLC_Value* input)`
-- 输入：`DLC_ARRAY`，每个元素为一个源文件的 `DLC_STRING` 内容
+- 输入：`DLC_ARRAY`，每个元素为一个源端点的 `DLC_STRING` 内容
 - 输出：任意 `DLC_Value`（`STRING` 直接写入目标；其他类型先序列化为 JSON）
 
 ### 示例

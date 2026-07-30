@@ -95,39 +95,56 @@ void* pb_module_func(const char* name);  // 按名获取函数指针
 
 ---
 
-## 数据桥接（文件间数据桥接）
+## 数据桥接（端点间数据桥接）
 
-**用一个语言编写一个桥接文件，连接两个或多个文件之间的数据。**
+**用一个语言编写桥接逻辑，连接两个或多个端点之间的数据桥接。**
+端点不限于文件，支持内存、字符串、标准流等多种类型；transform 不限于单一回调，
+支持管道链式编排和声明式 JSON 规则。
 
-这是 Bridge 框架在「跨语言函数调用」之上新增的「数据流」能力：从多个源文件读取数据
-→ 用一种语言编写的 transform 逻辑转换 → 写入多个目标文件。
+这是 Bridge 框架在「跨语言函数调用」之上新增的「数据流」能力：从多个源端点读取
+→ 用一种语言编写的 transform 逻辑转换 → 写入多个目标端点。该模块可脱离 Bridge
+框架独立编译为 `libdlc_bridge.so`。
 
 ### 数据流
 
 ```
-源文件 A ─┐
-          ├─→ transform ─→ 目标文件 1
-源文件 B ─┤               └→ 目标文件 2
-源文件 C ─┘               └→ 目标文件 3
+源端点 A ─┐
+          ├─→ transform ─→ 目标端点 1
+源端点 B ─┤               └→ 目标端点 2
+源端点 C ─┘               └→ 目标端点 3
 ```
 
-### 两种 transform 模式
+### 端点类型（不限于文件）
+
+| 类型 | 源端点 API | 目标端点 API | 说明 |
+|------|-----------|-------------|------|
+| **FILE** | `add_source_file` | `add_sink_file` | 磁盘文件 |
+| **MEM** | `add_source_mem(data,len)` | `add_sink_mem` + `get_sink_mem` | 内存 buffer |
+| **STRING** | `add_source_str(str)` | `add_sink_str` + `get_sink_str` | 字符串 |
+| **STDIO** | `add_source_stdio(stdin)` | `add_sink_stdio(stdout/stderr)` | 标准流 |
+
+端点可任意混合（如文件源 → 内存目标、内存源 → 文件目标）。
+`add_source` / `add_sink` 向后兼容（等价 FILE）。
+
+### 四种 transform 模式
 
 | 模式 | API | 适用场景 |
 |------|-----|---------|
-| **C 回调** | `dlc_bridge_set_transform_cb(b, fn)` | 永远可用，无需任何语言运行时；高性能纯 C 处理 |
-| **DLC 语言脚本** | `dlc_bridge_set_transform_lang(b, lang, code)` | 用 Python/JS/C#/SQL 等语言编写转换逻辑；需对应连接器已注册 |
+| **C 回调** | `set_transform_cb(b, fn)` | 永远可用，无需语言运行时；高性能纯 C 处理 |
+| **DLC 语言脚本** | `set_transform_lang(b, lang, code)` | 用 Python/JS/C#/SQL 等语言编写；需连接器已注册 |
+| **管道 PIPELINE** | `add_stage(b, fn)` ×N | 多 stage 链式编排：stage1 → stage2 → ... → stageN |
+| **JSON 规则** | `set_transform_rule(b, rule_json)` | 声明式规则 map/filter/field/rename；委托 JS 连接器 |
 
 ### C 回调模式示例
 
 ```c
 #include "dlc_bridge.h"
 
-/* transform：接收所有源文件内容，返回转换结果 */
+/* transform：接收所有源端点内容，返回转换结果 */
 DLC_Value* my_transform(DLC_Value* input) {
-    /* input 是 DLC_ARRAY，每项为源文件的 DLC_STRING 内容 */
+    /* input 是 DLC_ARRAY，每项为源端点的 DLC_STRING 内容 */
     int n = dlc_array_len(input);
-    DLC_Value* joined = dlc_string("");  /* 简单拼接示例 */
+    DLC_Value* joined = dlc_string("");
     for (int i = 0; i < n; i++) {
         DLC_Value* src = dlc_array_get(input, i);
         /* ... 处理 src->data.string_val ... */
@@ -136,30 +153,41 @@ DLC_Value* my_transform(DLC_Value* input) {
 }
 
 DLC_Bridge* b = dlc_bridge_create("etl");
-dlc_bridge_add_source(b, "users.csv", NULL);
-dlc_bridge_add_source(b, "orders.csv", NULL);
-dlc_bridge_add_sink(b, "merged.json", NULL);
+dlc_bridge_add_source_file(b, "users.csv", NULL);
+dlc_bridge_add_source_str(b, "inline config", NULL);  /* 内存源 */
+dlc_bridge_add_sink_mem(b, NULL);                     /* 内存目标 */
+dlc_bridge_add_sink_file(b, "out.json", NULL);
 dlc_bridge_set_transform_cb(b, my_transform);
 dlc_bridge_run(b);
+const char* result = dlc_bridge_get_sink_mem(b, 0, &len);  /* 取内存目标 */
 dlc_bridge_destroy(b);
 ```
 
-### DLC 语言脚本模式示例
+### 管道 PIPELINE 模式示例
 
 ```c
-/* 用 JavaScript 编写 transform：把输入数组每个元素转大写 */
-dlc_bridge_set_transform_lang(b, "javascript",
-    "bridge_output = bridge_input.map(function(s){ return s.toUpperCase(); })");
+/* 多 stage 串联：拼接 → 转大写 → 加后缀 */
+dlc_bridge_add_stage(b, stage_join);
+dlc_bridge_add_stage(b, stage_upper);
+dlc_bridge_add_stage(b, stage_suffix);
 ```
 
-执行时桥接器会：
-1. `dlc_bridge_set_global(lang, "bridge_input", input_array)` 注入数据
-2. `dlc_bridge_exec(lang, code)` 执行用户脚本
-3. `dlc_bridge_get_global(lang, "bridge_output")` 取回结果
+### 运行时能力
+
+- **重试**：`dlc_bridge_set_retry(b, N)` — transform 失败时自动重试 N 次
+- **异步**：`dlc_bridge_run_async(b, callback, user_data)` + `dlc_bridge_wait(b)` — 后台线程执行
+
+### 独立化
+
+数据桥接模块只依赖 `dlc_value.c` + `dlc_registry.c`，不依赖 jni/pybridge：
+
+```bash
+cd dlc && make bridge-so    # 生成 build/libdlc_bridge.so
+```
 
 ### 输出写入规则
 
-transform 返回值写入目标文件的方式：
+transform 返回值写入目标端点的方式：
 - `DLC_STRING` → 直接写入文本
 - 其他类型（数组/对象/数字…）→ 先 `dlc_to_json` 序列化为 JSON 再写入
 
@@ -173,10 +201,16 @@ transform 返回值写入目标文件的方式：
 | 函数 | 作用 |
 |------|------|
 | `dlc_bridge_create(name)` | 创建桥接器 |
-| `dlc_bridge_add_source(b, path, lang)` | 添加源文件 |
-| `dlc_bridge_add_sink(b, path, lang)` | 添加目标文件 |
-| `dlc_bridge_set_transform_cb(b, fn)` | 设置 C 回调 transform |
-| `dlc_bridge_set_transform_lang(b, lang, code)` | 设置语言脚本 transform |
-| `dlc_bridge_run(b)` | 执行桥接，返回源文件数（<0 出错） |
+| `dlc_bridge_add_source*(b, ...)` | 添加源端点（file/mem/str/stdio） |
+| `dlc_bridge_add_sink*(b, ...)` | 添加目标端点（file/mem/str/stdio） |
+| `dlc_bridge_get_sink_mem/str(b, idx)` | 取出内存/字符串目标数据 |
+| `dlc_bridge_set_transform_cb(b, fn)` | C 回调 transform |
+| `dlc_bridge_set_transform_lang(b, lang, code)` | 语言脚本 transform |
+| `dlc_bridge_add_stage(b, fn)` | 添加 pipeline stage |
+| `dlc_bridge_set_transform_rule(b, json)` | JSON 规则 transform |
+| `dlc_bridge_set_retry(b, n)` | 设置失败重试次数 |
+| `dlc_bridge_run(b)` | 同步执行，返回源端点数（<0 出错） |
+| `dlc_bridge_run_async(b, cb, ud)` | 异步执行 |
+| `dlc_bridge_wait(b)` | 等待异步完成 |
 | `dlc_bridge_error(b)` | 获取错误信息 |
 | `dlc_bridge_destroy(b)` | 销毁桥接器 |

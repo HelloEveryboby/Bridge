@@ -43,7 +43,10 @@ TS_SO   = $(SO_DIR)/libdlc_ts.so
 TEST_BIN       = $(BUILD_DIR)/test_dlc
 TEST_BRIDGE_BIN = $(BUILD_DIR)/test_bridge
 
-.PHONY: all clean test cpp js cs sql ts core test_bridge run-bridge
+# 独立数据桥接共享库（脱离 Bridge 框架可用）
+BRIDGE_SO = $(BUILD_DIR)/libdlc_bridge.so
+
+.PHONY: all clean test cpp js cs sql ts core test_bridge run-bridge bridge-so
 
 all: core cpp js cs sql ts
 	@echo ""
@@ -59,7 +62,7 @@ core: $(CORE_OBJS)
 	@echo "  CORE   libdlc_core.a"
 	@ar rcs $(BUILD_DIR)/libdlc_core.a $(CORE_OBJS)
 
-$(BUILD_DIR)/%.o: %.c dlc_protocol.h
+$(BUILD_DIR)/%.o: %.c dlc_protocol.h dlc_registry.h dlc_bridge.h
 	@mkdir -p $(BUILD_DIR) $(SO_DIR)
 	@echo "  CC     $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
@@ -142,11 +145,20 @@ test_bridge: $(TEST_BRIDGE_BIN)
 
 $(TEST_BRIDGE_BIN): test_bridge.c $(CORE_OBJS) dlc_bridge.h
 	@echo "  CC     test_bridge.c"
-	@$(CC) $(CFLAGS) -o $@ test_bridge.c $(CORE_OBJS) -ldl -I.
+	@$(CC) $(CFLAGS) -o $@ test_bridge.c $(CORE_OBJS) -ldl -lpthread -I.
 
 run-bridge: test_bridge
 	@echo ""
 	@$(TEST_BRIDGE_BIN)
+
+# ─── 独立数据桥接共享库（脱离 Bridge 框架） ─────────────────────────
+
+bridge-so: $(BRIDGE_SO)
+
+$(BRIDGE_SO): dlc_bridge.c dlc_bridge.h dlc_value.c dlc_registry.c dlc_protocol.h dlc_registry.h
+	@mkdir -p $(BUILD_DIR)
+	@echo "  SO     libdlc_bridge.so (独立共享库)"
+	@$(CC) $(CFLAGS) -shared -o $@ dlc_value.c dlc_registry.c dlc_bridge.c -ldl -lpthread -I.
 
 # ─── 清理 ──────────────────────────────────────────────────────────
 
@@ -170,6 +182,7 @@ help:
 	@echo "  make ts       TypeScript 连接器"
 	@echo "  make test_bridge  构建数据桥接测试 (test_bridge)"
 	@echo "  make run-bridge   构建并运行数据桥接测试"
+	@echo "  make bridge-so    独立共享库 libdlc_bridge.so (脱离 Bridge 框架)"
 	@echo "  make clean    清理"
 	@echo ""
 	@echo "Detected dependencies:"
