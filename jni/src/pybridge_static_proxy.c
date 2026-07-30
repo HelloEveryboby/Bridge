@@ -1,8 +1,10 @@
 /**
- * PyBridge Static Proxy — JNI 实现 (Bridge 上游版)
+ * PyBridge Static Proxy — JNI 实现（Bridge 框架 Python 子模块）
  *
  * 实现 Java 动态代理 → Python 方法调用的桥接。
  * 使用 pybridge_core.h API (pb_* 函数) 而非原始 Python.h。
+ *
+ * 对应 Java 类: com.bridge.py.proxy.PyBridgeProxyHandler
  *
  * 导出函数（供 Python 端 ctypes 调用）：
  *   pybridge_jni_create_proxy(proxy_id, iface_count, iface_names, method_count, method_names)
@@ -18,14 +20,14 @@
 
 #ifdef __ANDROID__
 #include <android/log.h>
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "PyBridge-Proxy", __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "PyBridge-Proxy", __VA_ARGS__)
-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, "PyBridge-Proxy", __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Bridge/PyBridge-Proxy", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Bridge/PyBridge-Proxy", __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, "Bridge/PyBridge-Proxy", __VA_ARGS__)
 #else
 #include <stdio.h>
-#define LOGI(...) fprintf(stderr, "[PyBridge-Proxy] " __VA_ARGS__)
-#define LOGE(...) fprintf(stderr, "[PyBridge-Proxy ERR] " __VA_ARGS__)
-#define LOGW(...) fprintf(stderr, "[PyBridge-Proxy WARN] " __VA_ARGS__)
+#define LOGI(...) fprintf(stderr, "[Bridge/PyBridge-Proxy] " __VA_ARGS__)
+#define LOGE(...) fprintf(stderr, "[Bridge/PyBridge-Proxy ERR] " __VA_ARGS__)
+#define LOGW(...) fprintf(stderr, "[Bridge/PyBridge-Proxy WARN] " __VA_ARGS__)
 #endif
 
 /* ─── 全局 JVM 句柄 ──────────────────────────────────────────────── */
@@ -305,10 +307,10 @@ int pybridge_jni_create_proxy(
     }
 
     /* 创建 PyBridgeProxyHandler */
-    jclass handlerClass = (*env)->FindClass(env, "com/pybridge/proxy/PyBridgeProxyHandler");
+    jclass handlerClass = (*env)->FindClass(env, "com/bridge/py/proxy/PyBridgeProxyHandler");
     if (!handlerClass) {
         (*env)->ExceptionClear(env);
-        LOGE("PyBridgeProxyHandler not found — add runtime/src/main/kotlin/com/pybridge/proxy/\n");
+        LOGE("PyBridgeProxyHandler not found — add runtime/src/main/kotlin/com/bridge/py/proxy/\n");
         for (int i = 0; i < interface_count; i++) {
             (*env)->DeleteLocalRef(env, iface_classes[i]);
         }
@@ -432,7 +434,7 @@ PyObject *pybridge_jni_proxy_invoke(
  * ═══════════════════════════════════════════════════════════════════ */
 
 JNIEXPORT jobject JNICALL
-Java_com_pybridge_proxy_PyBridgeProxyHandler_nativeInvoke(
+Java_com_bridge_py_proxy_PyBridgeProxyHandler_nativeInvoke(
     JNIEnv *env, jobject handler, jint proxyId, jobject jmethod, jobjectArray jargs)
 {
     return proxy_invoke_handler(env, handler, jmethod, jargs);

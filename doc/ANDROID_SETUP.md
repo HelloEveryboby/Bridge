@@ -1,20 +1,23 @@
-# PyBridge Android 快速上手
+# Bridge Android 快速上手
 
-让 PyBridge 像 Chaquopy 一样在 Android 里跑 Python。
+让 Bridge（PyBridge 子模块）像 Chaquopy 一样在 Android 里跑 Python。
+
+> Bridge 2.0：包名 `com.bridge.py.*`，Gradle 插件 `com.bridge.python`，默认 Python 3.13。
+> 框架架构见 [BRIDGE.md](BRIDGE.md)。
 
 ---
 
 ## 总览
 
-PyBridge 的 Android 构建分两步：
+Bridge 的 Android 构建分两步：
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  步骤 1: NDK 交叉编译 (一次性)                                   │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐  │
-│  │ CPython 源码  │ →  │ NDK clang    │ →  │ libpython3.12.so │  │
-│  │ pybridge_core │ →  │ 交叉编译     │ →  │ libpybridge.so   │  │
-│  │ pybridge_jni  │    │              │    │ stdlib.zip       │  │
+│  │ CPython 源码  │ →  │ NDK clang    │ →  │ libpython3.13.so │  │
+│  │ bridge_core   │ →  │ 交叉编译     │ →  │ libpybridge.so   │  │
+│  │ pybridge_*    │    │              │    │ stdlib.zip       │  │
 │  └──────────────┘    └──────────────┘    └──────────────────┘  │
 │                                                       │         │
 │  步骤 2: Gradle 打包 (每次构建)                         ▼         │
@@ -50,7 +53,7 @@ export ANDROID_NDK=$HOME/Android/Sdk/ndk/26.1.10909125
 ### 1.2 运行交叉编译
 
 ```bash
-cd pybridge/build-system
+cd bridge/build-system
 
 # 编译 arm64-v8a (最常见)
 ./build_android.sh --abi arm64-v8a
@@ -69,9 +72,9 @@ cd pybridge/build-system
 ```
 build-system/output/
 ├── arm64-v8a/
-│   ├── lib/libpython3.12.so    # CPython 运行时 (~20MB)
-│   ├── lib/libpybridge.so      # JNI 桥接层 (~100KB)
-│   ├── assets/python312_stdlib.zip  # 精简标准库 (~2MB)
+│   ├── lib/libpython3.13.so    # CPython 运行时 (~20MB)
+│   ├── lib/libpybridge.so      # Bridge 桥接层 (~100KB)
+│   ├── assets/python313_stdlib.zip  # 精简标准库 (~2MB)
 │   └── abi.json
 ├── x86_64/
 │   └── ... (同上)
@@ -99,8 +102,8 @@ your-android-project/
 ├── build-system/
 │   └── output/                          # 步骤 1 的产物复制到这里
 │       └── arm64-v8a/...
-├── runtime/                             # PyBridge 运行时库
-├── gradle-plugin/                       # PyBridge Gradle 插件
+├── runtime/                             # Bridge 运行时库 (com.bridge.py.*)
+├── gradle-plugin/                       # Bridge Gradle 插件 (com.bridge.python)
 └── settings.gradle
 ```
 
@@ -126,11 +129,11 @@ dependencyResolutionManagement {
 rootProject.name = "MyPythonApp"
 include ':app'
 
-// 包含 PyBridge 本地模块 (开发时用)
-includeBuild('../pybridge') {
+// 包含 Bridge 本地模块 (开发时用)
+includeBuild('../bridge') {
     dependencySubstitution {
-        substitute module('com.pybridge:runtime') using project(':runtime')
-        substitute module('com.pybridge:gradle-plugin') using project(':gradle-plugin')
+        substitute module('com.bridge:runtime') using project(':runtime')
+        substitute module('com.bridge:gradle-plugin') using project(':gradle-plugin')
     }
 }
 ```
@@ -139,8 +142,8 @@ includeBuild('../pybridge') {
 
 ```groovy
 plugins {
-    id 'com.android.application' version '8.2.0' apply false
-    id 'org.jetbrains.kotlin.android' version '1.9.22' apply false
+    id 'com.android.application' version '8.5.0' apply false
+    id 'org.jetbrains.kotlin.android' version '2.0.21' apply false
 }
 ```
 
@@ -150,17 +153,17 @@ plugins {
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'com.pybridge.python'    // PyBridge 插件
+    id 'com.bridge.python'    // Bridge / PyBridge 插件
 }
 
 android {
     namespace 'com.example.mypythonapp'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId "com.example.mypythonapp"
         minSdk 24
-        targetSdk 34
+        targetSdk 35
         versionCode 1
         versionName "1.0"
 
@@ -171,12 +174,12 @@ android {
 }
 
 dependencies {
-    implementation 'com.pybridge:runtime:1.0.0'
+    implementation 'com.bridge:runtime:2.0.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
 }
 
 python {
-    version "3.12"
+    version "3.13"
     buildPython System.getenv("PYTHON3") ?: "python3"
     srcDirs = ["src/main/python"]
     abiFilters "arm64-v8a", "x86_64"
@@ -195,11 +198,11 @@ python {
 
 ```bash
 # 方式 1: 复制到 build-system/output/
-cp -r pybridge/build-system/output/ your-project/build-system/output/
+cp -r bridge/build-system/output/ your-project/build-system/output/
 
 # 方式 2: 复制到 app/prebuilt/ (Gradle 插件会自动检测)
 mkdir -p your-project/app/prebuilt
-cp -r pybridge/build-system/output/* your-project/app/prebuilt/
+cp -r bridge/build-system/output/* your-project/app/prebuilt/
 ```
 
 ---
@@ -248,7 +251,7 @@ def process_json(json_str: str) -> str:
     """处理 JSON 数据"""
     data = json.loads(json_str)
     data["processed"] = True
-    data["python_version"] = "3.12"
+    data["python_version"] = "3.13"
     return json.dumps(data, indent=2)
 ```
 
@@ -260,8 +263,8 @@ package com.example.mypythonapp
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import com.pybridge.core.Python
-import com.pybridge.core.PyObject
+import com.bridge.py.core.Python
+import com.bridge.py.core.PyObject
 
 class MainActivity : AppCompatActivity() {
 
@@ -322,8 +325,8 @@ class MainActivity : AppCompatActivity() {
 ```java
 package com.example.mypythonapp;
 
-import com.pybridge.javaapi.PyBridge;
-import com.pybridge.javaapi.PyObject;
+import com.bridge.py.javaapi.PyBridge;
+import com.bridge.py.javaapi.PyObject;
 
 public class PythonHelper {
 
@@ -360,18 +363,18 @@ public class PythonHelper {
 
 ## 与 Chaquopy 的对比
 
-| 特性 | PyBridge | Chaquopy |
+| 特性 | Bridge / PyBridge | Chaquopy |
 |------|----------|----------|
 | **集成方式** | `build_android.sh` + Gradle Plugin | 纯 Gradle Plugin |
-| **Python 版本** | 3.12 (可配) | 3.8-3.14 |
+| **Python 版本** | 3.13 (可配，回退 3.12/3.11) | 3.8-3.14 |
 | **pip 包** | 支持 (需交叉编译) | 开箱即用 (预编译) |
 | **多语言** | 9 种语言互操作 | 仅 Python ↔ Java |
 | **跨平台** | Android + 桌面 | Android only |
 | **许可证** | Apache 2.0 | MIT |
 | **APK 体积** | ~25MB (含 CPython) | ~25MB (含 CPython) |
 
-**PyBridge 的优势**: 多语言互操作、跨平台、更灵活。
-**PyBridge 需要额外做的事情**: 手动运行一次 NDK 交叉编译（或使用预编译 .so）。
+**Bridge 的优势**: 多语言互操作、跨平台、更灵活。
+**Bridge 需要额外做的事情**: 手动运行一次 NDK 交叉编译（或使用预编译 .so）。
 
 ---
 
@@ -383,8 +386,8 @@ public class PythonHelper {
 
 ```bash
 # 手动下载 CPython
-curl -O https://www.python.org/ftp/python/3.12.3/Python-3.12.3.tar.xz
-tar xf Python-3.12.3.tar.xz -C pybridge/build-system/build/
+curl -O https://www.python.org/ftp/python/3.13.1/Python-3.13.1.tar.xz
+tar xf Python-3.13.1.tar.xz -C bridge/build-system/build/
 ```
 
 ### Q: APK 体积太大?
@@ -407,7 +410,7 @@ adb logcat | grep -E "pybridge|python|JNI"
 常见原因:
 - 缺少 libpython.so → 确认 `build_android.sh` 输出已复制到正确位置
 - ABI 不匹配 → 确认设备的 ABI 包含在编译列表中
-- Python 版本不匹配 → 确认 `python { version "3.12" }` 与编译版本一致
+- Python 版本不匹配 → 确认 `python { version "3.13" }` 与编译版本一致
 
 ---
 

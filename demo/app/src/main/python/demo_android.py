@@ -1,5 +1,7 @@
 """
 PyBridge Demo — Android API 访问（Java/Kotlin 共用）
+
+PyBridge 是 Bridge 框架的 Python 桥接子模块；本脚本演示从 Python 调用 Android API。
 """
 
 

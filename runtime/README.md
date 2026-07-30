@@ -1,6 +1,7 @@
-# PyBridge Runtime — Java/Kotlin 运行时
+# Bridge Runtime — Java/Kotlin 运行时
 
-Android 端的 Java/Kotlin API，提供 Python 解释器初始化、模块加载、对象操作和类型转换。
+Android 端的 Java/Kotlin API（包名 `com.bridge.py.*`），提供 Python 解释器初始化、
+模块加载、对象操作和类型转换。PyBridge 是 Bridge 框架的 Python 桥接子模块。
 
 ## 快速开始
 

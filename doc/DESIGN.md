@@ -1,8 +1,11 @@
-# PyBridge 技术设计文档
+# Bridge 技术设计文档
+
+> Bridge 是统一的多语言互操作框架；**PyBridge 是 Bridge 的 Python 桥接子模块**。
+> 子模块层级与符号约定见 [BRIDGE.md](BRIDGE.md)。
 
 ## 1. 项目概述
 
-PyBridge 是一个多语言桥接框架，核心目标是将 Python 运行时嵌入 Android 应用，并提供双向互操作能力。
+Bridge 是一个多语言桥接框架，核心目标是将 Python 运行时嵌入 Android 应用，并提供双向互操作能力。PyBridge 子模块负责 Python 侧的 dlopen/dlsym 与 `pb_*` API。
 
 ### 1.1 设计目标
 
@@ -17,10 +20,10 @@ PyBridge 是一个多语言桥接框架，核心目标是将 Python 运行时嵌
 
 ### 1.2 与 Chaquopy 对比
 
-| 特性 | Chaquopy | PyBridge |
+| 特性 | Chaquopy | Bridge / PyBridge |
 |------|----------|----------|
 | 构建系统 | Gradle Plugin | Gradle Plugin |
-| Python 版本 | 3.8-3.12 | 3.12 |
+| Python 版本 | 3.8-3.12 | 3.13（回退 3.12/3.11） |
 | JNI 桥接 | 闭源 | 开源 (C) |
 | 类型转换 | 自动 | 自动 + 可扩展 |
 | Static Proxy | 内置 | @PyClass 装饰器 |
@@ -43,12 +46,13 @@ PyBridge 是一个多语言桥接框架，核心目标是将 Python 运行时嵌
 ├──────────────────────────────────────────────────────────────┤
 │  Gradle Plugin: buildNative → pipInstall → compilePy → pkg  │
 ├──────────────────────────────────────────────────────────────┤
-│  libpybridge.so (C 核心)                                     │
-│  ├── pybridge_core.c    dlopen libpython + dlsym API        │
-│  ├── pybridge_jni.c     Java/Kotlin ↔ Python 类型转换       │
-│  ├── pybridge_static_proxy.c  Python→Java 动态代理          │
-│  └── pb_loader.c        多语言模块动态加载                   │
-│  libpython3.12.so (CPython 解释器)                           │
+│  libpybridge.so (Bridge C 核心)                              │
+│  ├── bridge_core.c     Bridge 通用核心 (版本/组件状态/加载)  │
+│  ├── pybridge_python.c PyBridge 子模块 (dlopen libpython)    │
+│  ├── pybridge_jni.c    Java/Kotlin ↔ Python 类型转换         │
+│  ├── pybridge_static_proxy.c  Python→Java 动态代理           │
+│  └── pb_loader.c       多语言模块动态加载                    │
+│  libpython3.13.so (CPython 解释器)                           │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -71,12 +75,13 @@ Python 调用 Java:
 
 | 文件 | 职责 |
 |------|------|
-| `pybridge_core.c` | 动态加载 libpython，dlsym 获取全部 CPython API |
+| `bridge_core.c` | Bridge 通用核心：版本、子组件状态、模块加载包装（`br_*` API） |
+| `pybridge_python.c` | PyBridge Python 子模块：dlopen libpython，dlsym 获取全部 CPython API（`pb_*`） |
 | `pybridge_jni.c` | JNI 入口：解释器生命周期、模块管理、类型转换 |
 | `pybridge_static_proxy.c` | Python→Java 动态代理 JNI 实现 |
 | `pb_loader.c` | 多语言模块动态加载器 |
 
-**设计要点**：`pybridge_core.h` 不依赖 `Python.h`，所有 Python API 通过 `pb_*` 前缀的函数间接调用，例如 `pb_import()`、`pb_call()`、`pb_from_string()`。
+**设计要点**：`pybridge_core.h` 不依赖 `Python.h`，所有 Python API 通过 `pb_*` 前缀的函数间接调用，例如 `pb_import()`、`pb_call()`、`pb_from_string()`。Bridge 框架级 API（`br_version`、`br_component_is_ready`、`br_load_module`）定义于 `bridge/bridge_core.h`。
 
 ### 3.2 Kotlin 运行时 (`runtime/`)
 
@@ -107,7 +112,7 @@ Python 调用 Java:
 **配置 DSL**：
 ```groovy
 python {
-    version "3.12"
+    version "3.13"
     buildPython "/usr/bin/python3"
     optimizeLevel 1
     abiFilters "arm64-v8a", "x86_64"

@@ -1,5 +1,8 @@
 # pybridge_java — Python 端 Java 访问模块
 
+> Bridge 框架的 Python 子模块（PyBridge）组成部分。
+> 模块名 `pybridge_java` 保留以维持用户代码兼容（与 `pb_*` / `libpybridge.so` 同策略）。
+
 在 Android 应用中，允许 Python 代码直接调用 Java 类和方法。
 
 ## 快速开始

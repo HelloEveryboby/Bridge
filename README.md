@@ -2,6 +2,9 @@
 
 让 Python / C / C++ / Java / JavaScript / C# / SQL / TypeScript / Rust 无缝互操作。
 
+> **Bridge 2.0**：PyBridge 现为 Bridge 框架的 Python 桥接子模块（`com.bridge.py.*`）。
+> 详见 [doc/BRIDGE.md](doc/BRIDGE.md)。
+
 ---
 
 ## 快速开始（3 步跑通）
@@ -68,14 +71,18 @@ LD_LIBRARY_PATH=jni java -Djava.library.path=jni -cp build/classes TestJava
 ## 项目结构
 
 ```
-pybridge/
+bridge/
 ├── jni/                           ← C 核心层 + JNI 封装
-│   ├── include/pybridge/
-│   │   ├── pybridge_core.h        ← 桥接层 API 头文件
-│   │   └── pb_module.h            ← 多语言模块协议头文件
+│   ├── include/
+│   │   ├── bridge/bridge_core.h   ← Bridge 框架伞形头文件 (br_* API)
+│   │   └── pybridge/
+│   │       ├── pybridge_core.h    ← PyBridge pb_* API 头文件
+│   │       └── pb_module.h        ← 多语言模块协议头文件
 │   ├── src/
-│   │   ├── pybridge_core.c        ← 桥接层实现 (dlopen libpython)
+│   │   ├── bridge_core.c          ← Bridge 通用核心 (版本/组件状态/模块加载)
+│   │   ├── pybridge_python.c      ← PyBridge Python 子模块 (dlopen libpython)
 │   │   ├── pybridge_jni.c         ← JNI 封装 (Java↔Python 类型转换)
+│   │   ├── pybridge_static_proxy.c← Python→Java 动态代理
 │   │   ├── test_jni_bridge.c      ← 测试用 JNI 桥接
 │   │   └── pb_loader.c            ← 模块动态加载器
 │   ├── test/test_pybridge.c       ← 13 项 C 层测试
@@ -89,12 +96,12 @@ pybridge/
 │   ├── test_modules.c             ← 跨语言测试
 │   └── Makefile                   ← 编译: make c / make rust / make go
 │
-├── runtime/                       ← Java/Kotlin 运行时
+├── runtime/                       ← Java/Kotlin 运行时 (com.bridge.py.*)
 │   ├── src/main/kotlin/           ← Kotlin API (Python.kt, PyObject.kt)
 │   ├── src/main/java/             ← Java API (PyBridge.java)
 │   └── build.gradle
 │
-├── gradle-plugin/                 ← Gradle 插件
+├── gradle-plugin/                 ← Gradle 插件 (com.bridge.python)
 │   ├── PyBridgePlugin.groovy      ← 插件核心
 │   ├── config/PythonExtension.groovy
 │   └── tasks/                     ← 5 个构建任务
@@ -109,6 +116,7 @@ pybridge/
 ├── test/TestJava.java             ← Java 端到端测试
 │
 └── doc/
+    ├── BRIDGE.md                  ← Bridge 框架架构与子模块层级
     ├── BLUEPRINT.md               ← 完整复现蓝图 (给 AI 用)
     ├── COMPLETE_DOCUMENTATION.md  ← 完整技术文档
     └── DESIGN.md                  ← 架构设计
@@ -119,9 +127,10 @@ pybridge/
 ## 架构
 
 ```
-Java/Kotlin  →  JNI (pybridge_jni.c)  →  C 桥接层 (pybridge_core.c)
+Java/Kotlin  →  JNI (pybridge_jni.c)  →  Bridge Core (bridge_core.c)
                                               │
-                                              ├─ dlopen(libpython.so) → Python
+                                              ├─ PyBridge (pybridge_python.c)
+                                              │     └─ dlopen(libpython.so) → Python
                                               ├─ dlopen(libcmath.so)  → C 模块
                                               ├─ dlopen(librustmath.so) → Rust 模块
                                               └─ dlopen(libgomath.so)  → Go 模块
@@ -205,9 +214,9 @@ cd .. && make test
 export ANDROID_NDK=/path/to/ndk
 cd build-system
 ./build_android.sh --abi arm64-v8a --ndk $ANDROID_NDK
-# 输出: output/arm64-v8a/lib/libpython3.12.so
+# 输出: output/arm64-v8a/lib/libpython3.13.so
 #       output/arm64-v8a/lib/libpybridge.so
-#       output/arm64-v8a/assets/python312_stdlib.zip
+#       output/arm64-v8a/assets/python313_stdlib.zip
 ```
 
 ---
@@ -216,6 +225,7 @@ cd build-system
 
 | 文件 | 用途 |
 |------|------|
+| `doc/BRIDGE.md` | **Bridge 框架架构**：子模块层级（Core/PyBridge/JNI/DLC）与符号约定 |
 | `doc/BLUEPRINT.md` | **给 AI 用**：完整源码 + 构建命令，可从零复现 |
 | `doc/COMPLETE_DOCUMENTATION.md` | 完整技术文档（16 章，1000+ 行） |
 | `doc/DESIGN.md` | 架构设计与技术决策 |
@@ -240,7 +250,7 @@ cd build-system
 
 | 语言 | 连接器 | 实现方式 |
 |------|--------|---------|
-| Python | `pybridge_core.c` | dlopen libpython |
+| Python | `pybridge_python.c` | dlopen libpython |
 | C | `pb_module.h` | 原生编译 |
 | C++ | `dlc/cpp/dlc_cpp.cpp` | g++ JIT 编译 |
 | Java | `pybridge_jni.c` | JNI 桥接 |
@@ -263,7 +273,7 @@ DLC_Value* answer = dlc_bridge_call("javascript", "Math.sqrt", args, 1);
 
 ## Android 集成
 
-PyBridge 可以像 Chaquopy 一样在 Android 中运行 Python。详见 [Android 快速上手](doc/ANDROID_SETUP.md)
+Bridge（PyBridge 子模块）可以像 Chaquopy 一样在 Android 中运行 Python。详见 [Android 快速上手](doc/ANDROID_SETUP.md)
 
 ---
 

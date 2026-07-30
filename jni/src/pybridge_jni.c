@@ -1,11 +1,11 @@
 /**
- * PyBridge JNI 封装层
+ * PyBridge JNI 封装层（Bridge 框架 Python 子模块）
  *
  * 将 C 桥接层 (pybridge_core.h) 封装为 Java 可调用的 native 方法。
  * 这是 Java/Kotlin ↔ CPython 的真正连接点。
  *
- * 对应 Java 类: com.pybridge.core.Python
- * 编译: NDK clang -shared -o libpybridge_jni.so pybridge_jni.c -lpybridge -lpython3.12
+ * 对应 Java 类: com.bridge.py.core.Python
+ * 编译: NDK clang -shared -o libpybridge_jni.so pybridge_jni.c -lpybridge -lpython3.13
  */
 #include <jni.h>
 #include "pybridge/pybridge_core.h"
@@ -15,12 +15,12 @@
 /* 日志: Android 用 __android_log_print, 桌面用 fprintf */
 #ifdef __ANDROID__
 #include <android/log.h>
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "PyBridge", __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "PyBridge", __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Bridge/PyBridge", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Bridge/PyBridge", __VA_ARGS__)
 #else
 #include <stdio.h>
-#define LOGI(...) fprintf(stderr, "[PyBridge] " __VA_ARGS__)
-#define LOGE(...) fprintf(stderr, "[PyBridge ERR] " __VA_ARGS__)
+#define LOGI(...) fprintf(stderr, "[Bridge/PyBridge] " __VA_ARGS__)
+#define LOGE(...) fprintf(stderr, "[Bridge/PyBridge ERR] " __VA_ARGS__)
 #endif
 
 /* ── Java ↔ C 类型转换辅助 ───────────────────────────────────────── */
@@ -308,10 +308,10 @@ static jobject pyobj_to_jobject(JNIEnv* env, PyObject* obj) {
 /* ── JNI Native 方法实现 ─────────────────────────────────────────── */
 
 /*
- * com.pybridge.core.Python.nativeInit
+ * com.bridge.py.core.Python.nativeInit
  */
 JNIEXPORT jint JNICALL
-Java_com_pybridge_core_Python_nativeInit(JNIEnv* env, jclass clazz,
+Java_com_bridge_py_core_Python_nativeInit(JNIEnv* env, jclass clazz,
                                           jstring jhome, jobjectArray jpaths) {
     (void)clazz;
 
@@ -341,20 +341,20 @@ Java_com_pybridge_core_Python_nativeInit(JNIEnv* env, jclass clazz,
 }
 
 /*
- * com.pybridge.core.Python.nativeFinalize
+ * com.bridge.py.core.Python.nativeFinalize
  */
 JNIEXPORT void JNICALL
-Java_com_pybridge_core_Python_nativeFinalize(JNIEnv* env, jclass clazz) {
+Java_com_bridge_py_core_Python_nativeFinalize(JNIEnv* env, jclass clazz) {
     (void)env; (void)clazz;
     pb_finalize();
     LOGI("Python finalized");
 }
 
 /*
- * com.pybridge.core.Python.nativeImportModule
+ * com.bridge.py.core.Python.nativeImportModule
  */
 JNIEXPORT jlong JNICALL
-Java_com_pybridge_core_Python_nativeImportModule(JNIEnv* env, jclass clazz,
+Java_com_bridge_py_core_Python_nativeImportModule(JNIEnv* env, jclass clazz,
                                                    jstring jname) {
     (void)clazz;
     const char* name = (*env)->GetStringUTFChars(env, jname, NULL);
@@ -364,10 +364,10 @@ Java_com_pybridge_core_Python_nativeImportModule(JNIEnv* env, jclass clazz,
 }
 
 /*
- * com.pybridge.core.Python.nativeCallFunction
+ * com.bridge.py.core.Python.nativeCallFunction
  */
 JNIEXPORT jobject JNICALL
-Java_com_pybridge_core_Python_nativeCallFunction(JNIEnv* env, jclass clazz,
+Java_com_bridge_py_core_Python_nativeCallFunction(JNIEnv* env, jclass clazz,
                                                    jlong ptr, jstring jfunc,
                                                    jobjectArray jargs) {
     (void)clazz;
@@ -405,10 +405,10 @@ Java_com_pybridge_core_Python_nativeCallFunction(JNIEnv* env, jclass clazz,
 }
 
 /*
- * com.pybridge.core.Python.nativeExec
+ * com.bridge.py.core.Python.nativeExec
  */
 JNIEXPORT jobject JNICALL
-Java_com_pybridge_core_Python_nativeExec(JNIEnv* env, jclass clazz, jstring jcode) {
+Java_com_bridge_py_core_Python_nativeExec(JNIEnv* env, jclass clazz, jstring jcode) {
     (void)clazz;
     const char* code = (*env)->GetStringUTFChars(env, jcode, NULL);
 
@@ -428,19 +428,19 @@ Java_com_pybridge_core_Python_nativeExec(JNIEnv* env, jclass clazz, jstring jcod
 }
 
 /*
- * com.pybridge.core.Python.nativeGetVersion
+ * com.bridge.py.core.Python.nativeGetVersion
  */
 JNIEXPORT jstring JNICALL
-Java_com_pybridge_core_Python_nativeGetVersion(JNIEnv* env, jclass clazz) {
+Java_com_bridge_py_core_Python_nativeGetVersion(JNIEnv* env, jclass clazz) {
     (void)clazz;
     return (*env)->NewStringUTF(env, pb_version());
 }
 
 /*
- * com.pybridge.core.Python.nativeDecRef
+ * com.bridge.py.core.Python.nativeDecRef
  */
 JNIEXPORT void JNICALL
-Java_com_pybridge_core_Python_nativeDecRef(JNIEnv* env, jclass clazz, jlong ptr) {
+Java_com_bridge_py_core_Python_nativeDecRef(JNIEnv* env, jclass clazz, jlong ptr) {
     (void)env; (void)clazz;
     pb_decref((PyObject*)(intptr_t)ptr);
 }

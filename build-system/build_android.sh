@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
-# PyBridge NDK 交叉编译脚本
+# Bridge / PyBridge NDK 交叉编译脚本
 #
-# 将 CPython + libpybridge 编译为 Android 可用的 .so
+# 将 CPython + libpybridge (Bridge 框架) 编译为 Android 可用的 .so
 #
 # 依赖:
 #   - Android NDK r25+ (https://developer.android.com/ndk/downloads)
@@ -15,17 +15,17 @@
 #   ./build_android.sh --all                     # 编译所有 ABI
 #
 # 输出:
-#   output/arm64-v8a/libpython3.12.so
+#   output/arm64-v8a/libpython3.13.so
 #   output/arm64-v8a/libpybridge.so
-#   output/arm64-v8a/python312_stdlib.zip
+#   output/arm64-v8a/python313_stdlib.zip
 # ============================================================================
 
 set -euo pipefail
 
 # ── 默认配置 ────────────────────────────────────────────────────────
 
-PYTHON_VERSION="${PYTHON_VERSION:-3.12.3}"
-PYTHON_MAJOR_MINOR="3.12"
+PYTHON_VERSION="${PYTHON_VERSION:-3.13.1}"
+PYTHON_MAJOR_MINOR="3.13"
 ANDROID_API="${ANDROID_API:-24}"         # 最低 API level
 ANDROID_NDK="${ANDROID_NDK:-}"           # NDK 路径
 BUILD_DIR="$(pwd)/build"
@@ -231,16 +231,18 @@ build_pybridge_for_abi() {
         cc="$TOOLCHAIN/bin/${ABI_ARCH[$abi]}-linux-android${ANDROID_API}-clang"
     fi
 
-    # 编译 libpybridge.so
-    # 注意: 这里需要修改 pybridge_core.c 使其在 Android 上直接链接 libpython
-    # 而不是用 dlopen（因为 Android 的 dlopen 路径不同）
+    # 编译 libpybridge.so (Bridge 框架: 通用层 + Python 子模块 + 模块加载器)
+    # 注意: Android 上 libpython 由 APK 打包并通过 dlopen 加载（见 pb_init）
+    # 这里链接 libpython 以解析 Py_Initialize 等符号；运行时仍走 dlopen 路径回退
 
     $cc -shared -fPIC -O2 \
         -I"$install/include/python${PYTHON_MAJOR_MINOR}" \
         -I"$(pwd)/jni/include" \
         -L"$install/lib" \
         -o "$output/libpybridge.so" \
-        jni/src/pybridge_core.c \
+        jni/src/bridge_core.c \
+        jni/src/pybridge_python.c \
+        jni/src/pb_loader.c \
         -lpython${PYTHON_MAJOR_MINOR} \
         -ldl -llog \
         -Wl,-rpath,'$ORIGIN' \
@@ -310,7 +312,7 @@ EOF
 
 main() {
     echo "╔══════════════════════════════════════════════════╗"
-    echo "║  PyBridge NDK 交叉编译                          ║"
+    echo "║  Bridge / PyBridge NDK 交叉编译                 ║"
     echo "╠══════════════════════════════════════════════════╣"
     echo "║  Python: $PYTHON_VERSION"
     echo "║  ABI:    $TARGET_ABI"

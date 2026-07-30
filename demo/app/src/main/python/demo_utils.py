@@ -1,5 +1,7 @@
 """
 PyBridge Demo — Python 工具模块（Java/Kotlin 共用）
+
+PyBridge 是 Bridge 框架的 Python 桥接子模块；本模块提供演示用的 Python 工具函数。
 """
 
 
