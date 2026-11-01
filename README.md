@@ -1,9 +1,9 @@
-# Bridge — 多语言桥接框架
+# Bridge — 多语言桥接与后端点到点互通框架
 
-让 Python / C / C++ / Java / JavaScript / C# / SQL / TypeScript / Rust 无缝互操作。
+让 Python / C / C++ / Java / JavaScript / C# / SQL / TypeScript / Rust / Go 无缝互操作。
 
-> **Bridge 2.0**：PyBridge 现为 Bridge 框架的 Python 桥接子模块（`com.bridge.py.*`）。
-> 详见 [doc/BRIDGE.md](doc/BRIDGE.md)。
+> **Bridge 3.0**：新增 **Bridge P2P (Point-to-Point)** 通信体系，专为多语言混合开发后端打造——无需复杂配置，无需外部消息队列或网关多层转发，直接实现跨语言端到端的高效点对点直连（TCP / Unix Domain Socket）。
+> 详见 [doc/P2P.md](doc/P2P.md) 与 [doc/BRIDGE.md](doc/BRIDGE.md)。
 
 ---
 
@@ -241,6 +241,7 @@ cd build-system
 | JNI 层 | 6 | ✅ 全部通过 |
 | 多语言模块 | 2 | ✅ 全部通过 |
 | DLC 跨语言桥接 | 5 | ✅ 全部通过 |
+| **Bridge P2P 点对点互通** | 5 | ✅ 全部通过（跨 Python/Java/C/Node/Go） |
 
 ---
 

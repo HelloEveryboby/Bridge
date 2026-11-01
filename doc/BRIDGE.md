@@ -14,7 +14,8 @@ Bridge (com.bridge.*)
 ├── Core      通用核心：版本 / 组件状态 / 模块加载基础设施
 ├── PyBridge  Python 桥接子模块（dlopen libpython + pb_* API）
 ├── JNI       Java/Kotlin ↔ C 互操作（Python 子模块的 JNI 封装）
-└── DLC       多语言连接器协议（C/C++/Rust/Go/JS/TS/C#/SQL）
+├── DLC       多语言连接器协议（C/C++/Rust/Go/JS/TS/C#/SQL）
+└── P2P       多语言后端点到点通信协议与 SDK（Brokerless TCP/UDS 直连）
 ```
 
 | 子模块 | 标识 | 实现位置 | 头文件 | 命名前缀 |
